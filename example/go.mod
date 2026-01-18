@@ -6,10 +6,13 @@ require (
 	github.com/bbadbeef/go-base/im v0.0.0
 	github.com/bbadbeef/go-base/user v0.0.0
 	gorm.io/driver/mysql v1.5.2
-	gorm.io/gorm v1.25.5
+	gorm.io/gorm v1.25.12
 )
 
+require github.com/google/uuid v1.6.0 // indirect
+
 require (
+	github.com/bbadbeef/go-base/storage v0.0.0
 	github.com/go-sql-driver/mysql v1.7.1 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -31,3 +34,5 @@ replace (
 	github.com/bbadbeef/go-base/im => ../im
 	github.com/bbadbeef/go-base/user => ../user
 )
+
+replace github.com/bbadbeef/go-base/storage => ../storage

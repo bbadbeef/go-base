@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>文件上传测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2 4px rgba(0,0,0,0.1); }
+        h1 { margin-bottom: 20px; color: #333; }
+        
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 4px; }
+        .section h2 { margin-bottom: 15px; font-size: 18px; color: #2196F3; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%; }
+        
+        .btn { padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+        .btn:hover { background: #1976D2; }
+        .btn-secondary { background: #666; }
+        .btn-secondary:hover { background: #555; }
+        
+        .result { margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+        .result pre { white-space: pre-wrap; word-wrap: break-word; }
+        
+        .preview { margin-top: 15px; max-width: 100%; }
+        .preview img { max-width: 100%; border-radius: 4px; }
+        .preview audio, .preview video { width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>文件上传测试</h1>
+        
+        <!-- 登录 -->
+        <div class="section">
+            <h2>1. 登录</h2>
+            <div class="form-group">
+                <label>手机号:</label>
+                <input type="text" id="phone" value="13800138000">
+            </div>
+            <div class="form-group">
+                <label>密码:</label>
+                <input type="password" id="password" value="123456">
+            </div>
+            <button class="btn" onclick="login()">登录</button>
+            <button class="btn btn-secondary" onclick="register()">注册</button>
+            <div class="result" id="loginResult"></div>
+        </div>
+        
+        <!-- 上传图片 -->
+        <div class="section">
+            <h2>2. 上传图片</h2>
+            <div class="form-group">
+                <label>选择图片:</label>
+                <input type="file" id="imageFile" accept="image/*">
+            </div>
+            <button class="btn" onclick="uploadImage()">上传图片</button>
+            <div class="result" id="imageResult"></div>
+            <div class="preview" id="imagePreview"></div>
+        </div>
+        
+        <!-- 上传语音 -->
+        <div class="section">
+            <h2>3. 上传语音</h2>
+            <div class="form-group">
+                <label>选择语音文件:</label>
+                <input type="file" id="voiceFile" accept="audio/*">
+            </div>
+            <button class="btn" onclick="uploadVoice()">上传语音</button>
+            <div class="result" id="voiceResult"></div>
+            <div class="preview" id="voicePreview"></div>
+        </div>
+        
+        <!-- 上传视频 -->
+        <div class="section">
+            <h2>4. 上传视频</h2>
+            <div class="form-group">
+                <label>选择视频文件:</label>
+                <input type="file" id="videoFile" accept="video/*">
+            </div>
+            <button class="btn" onclick="uploadVideo()">上传视频</button>
+            <div class="result" id="videoResult"></div>
+            <div class="preview" id="videoPreview"></div>
+        </div>
+        
+        <!-- 上传头像 -->
+        <div class="section">
+            <h2>5. 上传头像</h2>
+            <div class="form-group">
+                <label>选择头像:</label>
+                <input type="file" id="avatarFile" accept="image/*">
+            </div>
+            <button class="btn" onclick="uploadAvatar()">上传头像</button>
+            <div class="result" id="avatarResult"></div>
+            <div class="preview" id="avatarPreview"></div>
+        </div>
+    </div>
+
+    <script>
+        let token = '';
+        let currentUser = null;
+        const baseURL = 'http://localhost:9000';
+        
+        // 注册
+        async function register() {
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            
+            const result = await apiCall('/api/register', {
+                username: 'user_' + phone,
+                phone: phone,
+                password: password
+            });
+            
+            document.getElementById('loginResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            
+            if (result.code === 200) {
+                token = result.data.token;
+                currentUser = result.data.user;
+                alert('注册成功！Token已保存');
+            }
+        }
+        
+        // 登录
+        async function login() {
+            const phone = document.getElementById('phone').value;
+            const password = document.getElementById('password').value;
+            
+            const result = await apiCall('/api/login', {
+                phone: phone,
+                password: password
+            });
+            
+            document.getElementById('loginResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            
+            if (result.code === 200) {
+                token = result.data.token;
+                currentUser = result.data.user;
+                alert('登录成功！Token已保存');
+            }
+        }
+        
+        // 上传图片
+        async function uploadImage() {
+            const file = document.getElementById('imageFile').files[0];
+            if (!file) {
+                alert('请选择图片文件');
+                return;
+            }
+            
+            const result = await uploadFile('/api/upload/image', file);
+            document.getElementById('imageResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            
+            if (result.code === 200) {
+                document.getElementById('imagePreview').innerHTML = `<img src="${result.data.url}">`;
+            }
+        }
+        
+        // 上传语音
+        async function uploadVoice() {
+            const file = document.getElementById('voiceFile').files[0];
+            if (!file) {
+                alert('请选择语音文件');
+                return;
+            }
+            
+            const result = await uploadFile('/api/upload/voice', file);
+            document.getElementById('voiceResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            
+            if (result.code === 200) {
+                document.getElementById('voicePreview').innerHTML = `<audio controls src="${result.data.url}"></audio>`;
+            }
+        }
+        
+        // 上传视频
+        async function uploadVideo() {
+            const file = document.getElementById('videoFile').files[0];
+            if (!file) {
+                alert('请选择视频文件');
+                return;
+            }
+            
+            const result = await uploadFile('/api/upload/video', file);
+            document.getElementById('videoResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            
+            if (result.code === 200) {
+                document.getElementById('videoPreview').innerHTML = `<video controls src="${result.data.url}"></video>`;
+            }
+        }
+        
+        // 上传头像
+        async function uploadAvatar() {
+            const file = document.getElementById('avatarFile').files[0];
+            if (!file) {
+                alert('请选择头像文件');
+                return;
+            }
+            
+            const result = await uploadFile('/api/upload/avatar', file);
+            document.getElementById('avatarResult').innerHTML = '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+            
+            if (result.code === 200) {
+                document.getElementById('avatarPreview').innerHTML = `<img src="${result.data.url}">`;
+                alert('头像已更新！');
+            }
+        }
+        
+        // 通用上传文件函数
+        async function uploadFile(url, file) {
+            if (!token) {
+                alert('请先登录！');
+                return { error: '未登录' };
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(baseURL + url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: formData
+                });
+                
+                return await response.json();
+            } catch (error) {
+                return { error: error.message };
+            }
+        }
+        
+        // API调用
+        async function apiCall(url, data) {
+            try {
+                const options = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                };
+                
+                const response = await fetch(baseURL + url, options);
+                return await response.json();
+            } catch (error) {
+                return { error: error.message };
+            }
+        }
+    </script>
+</body>
+</html>

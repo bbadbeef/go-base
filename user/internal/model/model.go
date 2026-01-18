@@ -69,17 +69,16 @@ const (
 
 // RegisterRequest 注册请求
 type RegisterRequest struct {
-	Username string `json:"username"`
 	Phone    string `json:"phone"`
-	Password string `json:"password"`
-	Code     string `json:"code"` // 验证码（可选）
+	Password string `json:"password,omitempty"` // 密码（密码注册时使用）
+	Code     string `json:"code,omitempty"`     // 验证码（验证码注册时使用）
 }
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Phone    string `json:"phone"`
+	Account  string `json:"account"`            // 账号：手机号或用户名
 	Password string `json:"password,omitempty"` // 密码登录时使用
-	Code     string `json:"code,omitempty"`     // 验证码登录时使用
+	Code     string `json:"code,omitempty"`     // 验证码登录时使用（仅手机号）
 }
 
 // UpdateProfileRequest 更新用户信息请求

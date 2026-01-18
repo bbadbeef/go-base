@@ -31,21 +31,37 @@ type SendMessageRequest struct {
 	GroupID    int64  `json:"group_id"`     // 群组 ID（群聊时使用，单聊时为 0）
 	Content    string `json:"content"`      // 消息内容
 	MsgType    int    `json:"msg_type"`     // 消息类型（1:文本 2:图片 3:语音 4:视频 5:文件）
+	FileID     string `json:"file_id"`      // 文件ID（多媒体消息时使用）
 }
 
 // Message 消息
 type Message struct {
-	MsgID         string `json:"msg_id"`          // 消息唯一 ID
-	FromUserID    int64  `json:"from_user_id"`    // 发送者用户 ID
-	ToUserID      int64  `json:"to_user_id"`      // 接收者用户 ID
-	GroupID       int64  `json:"group_id"`        // 群组 ID（0 表示单聊）
-	Content       string `json:"content"`         // 消息内容
-	MsgType       int    `json:"msg_type"`        // 消息类型
-	Status        int    `json:"status"`          // 消息状态
-	ClientTime    int64  `json:"client_time"`     // 客户端时间戳（毫秒）
-	ServerTime    int64  `json:"server_time"`     // 服务端时间戳（毫秒）
-	DeliveredTime int64  `json:"delivered_time"`  // 送达时间戳（毫秒）
-	ReadTime      int64  `json:"read_time"`       // 已读时间戳（毫秒）
+	MsgID         string                 `json:"msg_id"`                   // 消息唯一 ID
+	FromUserID    int64                  `json:"from_user_id"`             // 发送者用户 ID
+	ToUserID      int64                  `json:"to_user_id"`               // 接收者用户 ID
+	GroupID       int64                  `json:"group_id"`                 // 群组 ID（0 表示单聊）
+	Content       string                 `json:"content"`                  // 消息内容
+	MsgType       int                    `json:"msg_type"`                 // 消息类型
+	Status        int                    `json:"status"`                   // 消息状态
+	FileID        string                 `json:"file_id,omitempty"`        // 文件ID（多媒体消息）
+	FileInfo      *FileInfo              `json:"file_info,omitempty"`      // 文件信息（多媒体消息）
+	ClientTime    int64                  `json:"client_time"`              // 客户端时间戳（毫秒）
+	ServerTime    int64                  `json:"server_time"`              // 服务端时间戳（毫秒）
+	DeliveredTime int64                  `json:"delivered_time"`           // 送达时间戳（毫秒）
+	ReadTime      int64                  `json:"read_time"`                // 已读时间戳（毫秒）
+}
+
+// FileInfo 文件信息
+type FileInfo struct {
+	FileID   string `json:"file_id"`             // 文件ID
+	FileName string `json:"file_name"`           // 文件名
+	FileType string `json:"file_type"`           // 文件类型
+	MimeType string `json:"mime_type"`           // MIME类型
+	FileSize int64  `json:"file_size"`           // 文件大小
+	FileURL  string `json:"file_url"`            // 文件访问URL
+	Width    int    `json:"width,omitempty"`     // 宽度（图片/视频）
+	Height   int    `json:"height,omitempty"`    // 高度（图片/视频）
+	Duration int    `json:"duration,omitempty"`  // 时长（音频/视频）
 }
 
 // Session 会话

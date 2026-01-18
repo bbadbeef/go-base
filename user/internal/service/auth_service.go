@@ -32,17 +32,8 @@ func (s *AuthService) Register(req *model.RegisterRequest) (*model.User, error) 
 		return nil, err
 	}
 
-	// 检查用户名是否存在
-	exists, err := s.userRepo.ExistsByUsername(req.Username)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, fmt.Errorf("username already exists")
-	}
-
 	// 检查手机号是否存在
-	exists, err = s.userRepo.ExistsByPhone(req.Phone)
+	exists, err := s.userRepo.ExistsByPhone(req.Phone)
 	if err != nil {
 		return nil, err
 	}
@@ -50,26 +41,46 @@ func (s *AuthService) Register(req *model.RegisterRequest) (*model.User, error) 
 		return nil, fmt.Errorf("phone already exists")
 	}
 
-	// 如果提供了验证码，进行验证
-	if req.Code != "" {
+	var passwordHash string
+	
+	// 密码注册
+	if req.Password != "" {
+		// 验证密码
+		if err := s.validatePassword(req.Password); err != nil {
+			return nil, err
+		}
+		// 加密密码
+		passwordHash, err = s.hashPassword(req.Password)
+		if err != nil {
+			return nil, fmt.Errorf("hash password failed: %w", err)
+		}
+	} else if req.Code != "" {
+		// 验证码注册
 		if err := s.VerifyCode(req.Phone, req.Code, model.CodeTypeRegister); err != nil {
 			return nil, fmt.Errorf("invalid verification code: %w", err)
 		}
+		// 验证码注册时，生成一个随机密码
+		randomPassword := s.generateRandomPassword()
+		passwordHash, err = s.hashPassword(randomPassword)
+		if err != nil {
+			return nil, fmt.Errorf("hash password failed: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("password or code is required")
 	}
 
-	// 加密密码
-	passwordHash, err := s.hashPassword(req.Password)
-	if err != nil {
-		return nil, fmt.Errorf("hash password failed: %w", err)
-	}
+	// 生成随机昵称（user_开头+随机数）
+	nickname := s.generateRandomNickname()
+	// 生成用户名（基于手机号）
+	username := "u" + req.Phone
 
 	// 创建用户
 	now := model.NowMillis()
 	user := &model.User{
-		Username:     req.Username,
+		Username:     username,
 		Phone:        req.Phone,
 		PasswordHash: passwordHash,
-		Nickname:     req.Username, // 默认昵称为用户名
+		Nickname:     nickname,
 		Status:       model.UserStatusNormal,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -82,26 +93,56 @@ func (s *AuthService) Register(req *model.RegisterRequest) (*model.User, error) 
 	return user, nil
 }
 
-// Login 密码登录
+// Login 密码登录（支持手机号或用户名）
 func (s *AuthService) Login(req *model.LoginRequest) (*model.User, error) {
-	if req.Phone == "" {
-		return nil, fmt.Errorf("phone is required")
+	if req.Account == "" {
+		return nil, fmt.Errorf("account is required")
 	}
 
-	// 获取用户
-	user, err := s.userRepo.GetByPhone(req.Phone)
-	if err != nil {
-		return nil, fmt.Errorf("invalid phone or password")
+	var user *model.User
+	var err error
+
+	// 判断是否为手机号（如果是纯数字且长度为11，视为手机号）
+	isPhone := regexp.MustCompile(`^1[3-9]\d{9}$`).MatchString(req.Account)
+
+	// 验证码登录（仅支持手机号）
+	if req.Code != "" {
+		if !isPhone {
+			return nil, fmt.Errorf("verification code login only supports phone number")
+		}
+		// 验证验证码
+		if err := s.VerifyCode(req.Account, req.Code, model.CodeTypeLogin); err != nil {
+			return nil, fmt.Errorf("invalid verification code: %w", err)
+		}
+		// 获取用户
+		user, err = s.userRepo.GetByPhone(req.Account)
+		if err != nil {
+			return nil, fmt.Errorf("user not found")
+		}
+	} else if req.Password != "" {
+		// 密码登录
+		// 尝试通过手机号或用户名获取用户
+		if isPhone {
+			user, err = s.userRepo.GetByPhone(req.Account)
+		} else {
+			user, err = s.userRepo.GetByUsername(req.Account)
+		}
+		
+		if err != nil {
+			return nil, fmt.Errorf("invalid account or password")
+		}
+
+		// 验证密码
+		if err := s.verifyPassword(user.PasswordHash, req.Password); err != nil {
+			return nil, fmt.Errorf("invalid account or password")
+		}
+	} else {
+		return nil, fmt.Errorf("password or code is required")
 	}
 
 	// 检查用户状态
 	if user.Status != model.UserStatusNormal {
 		return nil, fmt.Errorf("user is disabled")
-	}
-
-	// 验证密码
-	if err := s.verifyPassword(user.PasswordHash, req.Password); err != nil {
-		return nil, fmt.Errorf("invalid phone or password")
 	}
 
 	return user, nil
@@ -237,23 +278,16 @@ func (s *AuthService) verifyPassword(hashedPassword, password string) error {
 
 // validateRegisterInput 验证注册输入
 func (s *AuthService) validateRegisterInput(req *model.RegisterRequest) error {
-	if req.Username == "" {
-		return fmt.Errorf("username is required")
-	}
-
-	if len(req.Username) < 3 || len(req.Username) > 20 {
-		return fmt.Errorf("username length must be between 3 and 20")
-	}
-
-	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(req.Username) {
-		return fmt.Errorf("username can only contain letters, numbers and underscores")
-	}
-
 	if err := s.validatePhone(req.Phone); err != nil {
 		return err
 	}
 
-	return s.validatePassword(req.Password)
+	// 密码和验证码至少需要一个
+	if req.Password == "" && req.Code == "" {
+		return fmt.Errorf("password or verification code is required")
+	}
+
+	return nil
 }
 
 // validatePhone 验证手机号
@@ -315,4 +349,14 @@ func (s *AuthService) SendVerificationCode(phone string, codeType int) (string, 
 // generateCode 生成6位随机验证码
 func (s *AuthService) generateCode() string {
 	return fmt.Sprintf("%06d", time.Now().UnixNano()%1000000)
+}
+
+// generateRandomNickname 生成随机昵称（user_开头）
+func (s *AuthService) generateRandomNickname() string {
+	return fmt.Sprintf("user_%d", time.Now().UnixNano()%1000000000)
+}
+
+// generateRandomPassword 生成随机密码
+func (s *AuthService) generateRandomPassword() string {
+	return fmt.Sprintf("pwd%d", time.Now().UnixNano())
 }

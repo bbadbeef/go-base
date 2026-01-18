@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+	
 	"gorm.io/gorm"
 
 	"github.com/bbadbeef/go-base/im/internal/model"
@@ -9,13 +11,14 @@ import (
 // DBMessage 消息数据库模型
 type DBMessage struct {
 	ID            int64  `gorm:"primaryKey;autoIncrement"`
-	MsgID         string `gorm:"type:varchar(64);uniqueIndex;not null"`
+	MsgID         string `gorm:"type:varchar(64);uniqueIndex:uk_msg_id;not null"`
 	FromUserID    int64  `gorm:"index:idx_from;not null"`
 	ToUserID      int64  `gorm:"index:idx_to;not null"`
 	GroupID       int64  `gorm:"index:idx_group;default:0"`
 	Content       string `gorm:"type:text;not null"`
 	MsgType       int    `gorm:"type:tinyint;default:1"`
 	Status        int    `gorm:"type:tinyint;default:1"`
+	FileID        string `gorm:"type:varchar(64);index:idx_file_id"` // 文件ID（多媒体消息）
 	ClientTime    int64  `gorm:"type:bigint"`
 	ServerTime    int64  `gorm:"type:bigint;index:idx_server_time;not null"`
 	DeliveredTime int64  `gorm:"type:bigint;default:0"`
@@ -40,7 +43,13 @@ func NewMessageRepository(db *gorm.DB) *MessageRepository {
 // InitTables 初始化数据库表
 func (r *MessageRepository) InitTables() error {
 	// 自动迁移消息表
-	if err := r.db.AutoMigrate(&DBMessage{}); err != nil {
+	err := r.db.AutoMigrate(&DBMessage{})
+	// 忽略DROP不存在的索引/外键错误（GORM迁移的已知问题）
+	if err != nil && (strings.Contains(err.Error(), "Can't DROP") || 
+		strings.Contains(err.Error(), "check that column/key exists")) {
+		err = nil
+	}
+	if err != nil {
 		return err
 	}
 
@@ -85,6 +94,7 @@ func (r *MessageRepository) Save(msg *model.Message) error {
 		Content:       msg.Content,
 		MsgType:       msg.MsgType,
 		Status:        msg.Status,
+		FileID:        msg.FileID,
 		ClientTime:    msg.ClientTime,
 		ServerTime:    msg.ServerTime,
 		DeliveredTime: msg.DeliveredTime,
@@ -185,6 +195,7 @@ func (r *MessageRepository) toModel(dbMsg *DBMessage) *model.Message {
 		Content:       dbMsg.Content,
 		MsgType:       dbMsg.MsgType,
 		Status:        dbMsg.Status,
+		FileID:        dbMsg.FileID,
 		ClientTime:    dbMsg.ClientTime,
 		ServerTime:    dbMsg.ServerTime,
 		DeliveredTime: dbMsg.DeliveredTime,

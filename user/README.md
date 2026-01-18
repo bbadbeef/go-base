@@ -4,9 +4,10 @@
 
 ## 功能特性
 
-- ✅ 用户注册（支持验证码可选）
-- ✅ 密码登录
-- ✅ 验证码登录
+- ✅ 用户注册（支持密码注册或验证码注册）
+- ✅ 密码登录（支持手机号或用户名）
+- ✅ 验证码登录（仅支持手机号）
+- ✅ 自动生成随机昵称（user_开头）
 - ✅ 用户信息管理（头像、昵称、签名等）
 - ✅ 修改密码
 - ✅ 重置密码（通过验证码）
@@ -52,17 +53,36 @@ func main() {
         TokenDuration: 7 * 24 * time.Hour, // 7天
     })
     
-    // 注册用户
+    // 注册用户（方式1：密码注册）
     u, token, err := userService.Register(&user.RegisterRequest{
-        Username: "testuser",
         Phone:    "13800138000",
         Password: "123456",
     })
     
-    // 登录
+    // 注册用户（方式2：验证码注册）
+    code, _ := userService.SendVerificationCode(&user.SendCodeRequest{
+        Phone: "13900139000",
+        Type:  user.CodeTypeRegister,
+    })
+    u, token, err = userService.Register(&user.RegisterRequest{
+        Phone: "13900139000",
+        Code:  code,
+    })
+    
+    // 登录（方式1：密码登录，支持手机号或用户名）
     u, token, err = userService.Login(&user.LoginRequest{
-        Phone:    "13800138000",
+        Account:  "13800138000", // 或使用用户名
         Password: "123456",
+    })
+    
+    // 登录（方式2：验证码登录，仅支持手机号）
+    code, _ = userService.SendVerificationCode(&user.SendCodeRequest{
+        Phone: "13800138000",
+        Type:  user.CodeTypeLogin,
+    })
+    u, token, err = userService.Login(&user.LoginRequest{
+        Account: "13800138000",
+        Code:    code,
     })
     
     // 验证Token
@@ -87,12 +107,35 @@ func main() {
 #### 注册
 ```go
 Register(req *RegisterRequest) (*User, string, error)
+
+// RegisterRequest 结构
+type RegisterRequest struct {
+    Phone    string `json:"phone"`
+    Password string `json:"password,omitempty"` // 密码注册时使用
+    Code     string `json:"code,omitempty"`     // 验证码注册时使用
+}
 ```
+
+**注意**：密码和验证码至少需要提供一个
+- 使用密码注册时，会自动生成 `user_` 开头的随机昵称
+- 使用验证码注册时，也会自动生成随机昵称和密码
 
 #### 密码登录
 ```go
 Login(req *LoginRequest) (*User, string, error)
+
+// LoginRequest 结构
+type LoginRequest struct {
+    Account  string `json:"account"`            // 账号：手机号或用户名
+    Password string `json:"password,omitempty"` // 密码登录时使用
+    Code     string `json:"code,omitempty"`     // 验证码登录时使用（仅手机号）
+}
 ```
+
+**支持三种登录方式**：
+1. 手机号 + 密码
+2. 用户名 + 密码
+3. 手机号 + 验证码
 
 #### 验证码登录
 ```go
@@ -114,6 +157,13 @@ ResetPassword(req *ResetPasswordRequest) error
 #### 发送验证码
 ```go
 SendVerificationCode(req *SendCodeRequest) (string, error)
+
+// 验证码类型常量
+const (
+    CodeTypeRegister      = 1 // 注册
+    CodeTypeLogin         = 2 // 登录
+    CodeTypeResetPassword = 3 // 重置密码
+)
 ```
 
 #### 验证验证码
@@ -134,6 +184,14 @@ GetUserProfile(id int64) (*UserProfile, error)
 UpdateProfile(userID int64, req *UpdateProfileRequest) (*User, error)
 ```
 
+**支持更新的字段**：
+- 昵称（nickname）
+- 头像（avatar）
+- 邮箱（email）
+- 性别（gender）
+- 生日（birthday）
+- 个性签名（signature）
+
 ### JWT 相关
 
 #### 验证Token
@@ -152,9 +210,9 @@ RefreshToken(token string) (string, error)
 ```go
 type User struct {
     ID           int64
-    Username     string
+    Username     string  // 自动生成：u + 手机号
     Phone        string
-    Nickname     string
+    Nickname     string  // 自动生成：user_ + 随机数
     Avatar       string
     Email        string
     Gender       int     // 0-未知，1-男，2-女
@@ -179,7 +237,7 @@ cd example
 go run main.go
 
 # 访问测试页面
-http://localhost:8081
+http://localhost:8080
 ```
 
 ## 注意事项
@@ -188,3 +246,4 @@ http://localhost:8081
 2. **密码强度**: 建议在应用层增加密码复杂度验证
 3. **验证码发送**: `SendVerificationCode` 返回验证码供测试，生产环境需要集成短信服务
 4. **数据库**: 使用 MySQL，时间戳为毫秒
+5. **随机昵称**: 注册时自动生成 `user_` 开头的随机昵称，用户可以后续通过 `UpdateProfile` 修改

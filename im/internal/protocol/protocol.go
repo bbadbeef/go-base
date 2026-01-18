@@ -26,6 +26,7 @@ type WSChatMessage struct {
 	ToUserID   int64  `json:"to_user_id"`   // 接收者用户 ID
 	Content    string `json:"content"`      // 消息内容
 	MsgType    int    `json:"msg_type"`     // 消息类型
+	FileID     string `json:"file_id"`      // 文件ID（多媒体消息）
 	ClientTime int64  `json:"client_time"`  // 客户端时间戳
 }
 
@@ -35,6 +36,7 @@ type WSGroupMessage struct {
 	GroupID    int64  `json:"group_id"`     // 群组 ID
 	Content    string `json:"content"`      // 消息内容
 	MsgType    int    `json:"msg_type"`     // 消息类型
+	FileID     string `json:"file_id"`      // 文件ID（多媒体消息）
 	ClientTime int64  `json:"client_time"`  // 客户端时间戳
 }
 
@@ -52,6 +54,7 @@ type WSPushMessage struct {
 	FromUserID int64  `json:"from_user_id"` // 发送者用户 ID
 	Content    string `json:"content"`      // 消息内容
 	MsgType    int    `json:"msg_type"`     // 消息类型
+	FileID     string `json:"file_id"`      // 文件ID（多媒体消息）
 	Status     int    `json:"status"`       // 消息状态
 	ClientTime int64  `json:"client_time"`  // 发送方的时间戳
 	ServerTime int64  `json:"server_time"`  // 服务端时间戳

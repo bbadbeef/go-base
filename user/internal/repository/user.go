@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+	
 	"gorm.io/gorm"
 
 	"github.com/bbadbeef/go-base/user/internal/model"
@@ -39,7 +41,13 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 
 // InitTable 初始化数据库表
 func (r *UserRepository) InitTable() error {
-	return r.db.AutoMigrate(&DBUser{})
+	err := r.db.AutoMigrate(&DBUser{})
+	// 忽略DROP不存在的索引/外键错误（GORM迁移的已知问题）
+	if err != nil && (strings.Contains(err.Error(), "Can't DROP") || 
+		strings.Contains(err.Error(), "check that column/key exists")) {
+		return nil
+	}
+	return err
 }
 
 // Create 创建用户
